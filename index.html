@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Okul Güreş Müsabakası</title>
+  <style>
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#111;color:#fff;transition:.3s}
+    body.light{background:#f4f4f4;color:#111}
+    header{display:flex;gap:10px;padding:15px;background:#1c1c1c}
+    body.light header{background:#ddd}
+    button{padding:10px 16px;border:none;cursor:pointer;background:#f5c400;font-weight:bold;border-radius:6px}
+    .container{padding:20px;max-width:1100px;margin:auto}
+
+    /* MÜSABAKA */
+    .match{display:flex;align-items:center;gap:20px;background:#222;padding:15px;margin-bottom:15px;border-radius:10px}
+    body.light .match{background:#fff}
+    .fighter{display:flex;align-items:center;gap:10px;flex:1}
+    .fighter img{width:80px;height:80px;object-fit:cover;border-radius:8px}
+    .vs{font-size:22px;font-weight:bold;color:#f5c400}
+
+    /* PUAN */
+    .score-item{display:flex;align-items:center;gap:15px;background:#222;padding:12px;margin-bottom:12px;border-radius:10px}
+    body.light .score-item{background:#fff}
+    .score-item img{width:70px;height:70px;object-fit:cover;border-radius:8px}
+    .score-name{flex:1;font-weight:bold}
+    .score-point{font-size:18px;color:#f5c400}
+
+    input{margin:6px 0;padding:8px;width:100%}
+    .danger{background:#c62828;color:#fff}
+  </style>
+</head>
+<body>
+
+<header>
+  <button onclick="showPage('musabaka')">MÜSABAKALAR</button>
+  <button onclick="showPage('puan')">PUAN LİSTESİ</button>
+  <button onclick="showPage('admin')">ADMİN</button>
+  <button onclick="toggleTheme()">Koyu / Açık</button>
+</header>
+
+<div id="musabaka" class="container"></div>
+<div id="puan" class="container" style="display:none"></div>
+
+<div id="admin" class="container" style="display:none">
+  <div id="loginBox">
+    <h3>Admin Girişi</h3>
+    <input type="password" id="pass" placeholder="Şifre">
+    <button onclick="login()">Giriş</button>
+  </div>
+
+  <div id="panel" style="display:none">
+    <h3>Müsabaka Ekle</h3>
+    <input id="n1" placeholder="Sporcu 1">
+    <input id="i1" type="file">
+    <input id="n2" placeholder="Sporcu 2">
+    <input id="i2" type="file">
+    <button onclick="addMatch()">Ekle</button>
+
+    <h3>Puan Ekle / Güncelle</h3>
+    <input id="pn" placeholder="İsim">
+    <input id="pi" type="file">
+    <input id="ps" placeholder="Puan (örn: 0-1)">
+    <button onclick="addScore()">Kaydet</button>
+  </div>
+</div>
+
+<script>
+  const musDiv = document.getElementById('musabaka');
+  const puanDiv = document.getElementById('puan');
+  const adminDiv = document.getElementById('admin');
+  let isAdmin = false;
+
+  let matches = JSON.parse(localStorage.getItem('matches')||'[]');
+  let scores = JSON.parse(localStorage.getItem('scores')||'[]');
+
+  function save(){
+    localStorage.setItem('matches',JSON.stringify(matches));
+    localStorage.setItem('scores',JSON.stringify(scores));
+  }
+
+  function showPage(p){
+    musDiv.style.display = p==='musabaka'?'block':'none';
+    puanDiv.style.display = p==='puan'?'block':'none';
+    adminDiv.style.display = p==='admin'?'block':'none';
+    render();
+  }
+
+  function toggleTheme(){document.body.classList.toggle('light')}
+
+  function login(){
+    if(pass.value==='ben1sma1ly1ld1r1m'){
+      isAdmin=true;loginBox.style.display='none';panel.style.display='block';
+    } else alert('Şifre yanlış');
+  }
+
+  function addMatch(){
+    const r1=new FileReader(),r2=new FileReader();
+    r1.onload=()=>{r2.onload=()=>{
+      matches.push({n1:n1.value,n2:n2.value,i1:r1.result,i2:r2.result});
+      save();render();
+    };r2.readAsDataURL(i2.files[0]);};
+    r1.readAsDataURL(i1.files[0]);
+  }
+
+  function deleteMatch(i){if(isAdmin){matches.splice(i,1);save();render()}}
+
+  function addScore(){
+    const r=new FileReader();
+    r.onload=()=>{
+      const idx=scores.findIndex(s=>s.name===pn.value);
+      if(idx>-1) scores[idx]={name:pn.value,score:ps.value,img:r.result};
+      else scores.push({name:pn.value,score:ps.value,img:r.result});
+      save();render();
+    };
+    r.readAsDataURL(pi.files[0]);
+  }
+
+  function editScore(i){if(isAdmin){const v=prompt('Yeni puan',scores[i].score);if(v){scores[i].score=v;save();render()}}}
+  function deleteScore(i){if(isAdmin){scores.splice(i,1);save();render()}}
+
+  function render(){
+    musDiv.innerHTML='';
+    matches.forEach((m,i)=>{
+      musDiv.innerHTML+=`
+      <div class="match">
+        <div class="fighter"><img src="${m.i1}"><span>${m.n1}</span></div>
+        <div class="vs">VS</div>
+        <div class="fighter"><img src="${m.i2}"><span>${m.n2}</span></div>
+        ${isAdmin?`<button class="danger" onclick="deleteMatch(${i})">Sil</button>`:''}
+      </div>`;
+    });
+
+    puanDiv.innerHTML='';
+    scores.forEach((s,i)=>{
+      puanDiv.innerHTML+=`
+      <div class="score-item">
+        <img src="${s.img}">
+        <div class="score-name">${s.name}</div>
+        <div class="score-point">${s.score}</div>
+        ${isAdmin?`<button onclick="editScore(${i})">Değiştir</button><button class="danger" onclick="deleteScore(${i})">Sil</button>`:''}
+      </div>`;
+    });
+  }
+
+  render();
+</script>
+
+</body>
+</html>
